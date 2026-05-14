@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCF Valuation — Intrinsic Value, Quantified</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0c10;
+            --surface: #111318;
+            --border: #1e2128;
+            --accent: #c8f55a;
+            --accent-dim: rgba(200,245,90,0.12);
+            --text: #e8eaf0;
+            --muted: #6b7280;
+            --white: #ffffff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Grid background */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(200,245,90,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(200,245,90,0.04) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        nav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 60px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(10,12,16,0.85);
+            backdrop-filter: blur(12px);
+        }
+
+        .logo {
+            font-family: 'DM Mono', monospace;
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--accent);
+            letter-spacing: 0.05em;
+        }
+
+        .logo span { color: var(--muted); }
+
+        .nav-links { display: flex; gap: 36px; }
+        .nav-links a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 400;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--text); }
+
+        .btn-nav {
+            background: var(--accent);
+            color: #0a0c10;
+            padding: 10px 24px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: opacity 0.2s;
+        }
+        .btn-nav:hover { opacity: 0.85; }
+
+        /* Hero */
+        .hero {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 120px 40px 80px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--accent-dim);
+            border: 1px solid rgba(200,245,90,0.25);
+            color: var(--accent);
+            padding: 6px 16px;
+            border-radius: 100px;
+            font-size: 12px;
+            font-family: 'DM Mono', monospace;
+            letter-spacing: 0.08em;
+            margin-bottom: 40px;
+            animation: fadeUp 0.6s ease both;
+        }
+
+        .badge::before {
+            content: '';
+            width: 6px; height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        h1 {
+            font-family: 'DM Serif Display', serif;
+            font-size: clamp(52px, 7vw, 96px);
+            line-height: 1.0;
+            font-weight: 400;
+            color: var(--white);
+            max-width: 900px;
+            animation: fadeUp 0.7s 0.1s ease both;
+        }
+
+        h1 em {
+            font-style: italic;
+            color: var(--accent);
+        }
+
+        .subtitle {
+            margin-top: 28px;
+            font-size: 18px;
+            color: var(--muted);
+            max-width: 520px;
+            line-height: 1.6;
+            font-weight: 300;
+            animation: fadeUp 0.7s 0.2s ease both;
+        }
+
+        .hero-cta {
+            margin-top: 48px;
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+            animation: fadeUp 0.7s 0.3s ease both;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #0a0c10;
+            padding: 16px 36px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 500;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 0 30px rgba(200,245,90,0.3);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 50px rgba(200,245,90,0.45);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text);
+            padding: 16px 36px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 400;
+            border: 1px solid var(--border);
+            transition: border-color 0.2s;
+        }
+        .btn-secondary:hover { border-color: var(--muted); }
+
+        /* Ticker tape */
+        .ticker-wrap {
+            width: 100%;
+            overflow: hidden;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 0;
+            background: var(--surface);
+            animation: fadeUp 0.7s 0.4s ease both;
+        }
+
+        .ticker-tape {
+            display: flex;
+            gap: 48px;
+            animation: ticker 30s linear infinite;
+            white-space: nowrap;
+        }
+
+        .ticker-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'DM Mono', monospace;
+            font-size: 13px;
+        }
+
+        .ticker-symbol { color: var(--text); font-weight: 500; }
+        .ticker-price { color: var(--muted); }
+        .ticker-up { color: #4ade80; }
+        .ticker-down { color: #f87171; }
+
+        @keyframes ticker {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* Features */
+        .features {
+            position: relative;
+            z-index: 1;
+            padding: 100px 60px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-label {
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            color: var(--accent);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-family: 'DM Serif Display', serif;
+            font-size: clamp(36px, 4vw, 52px);
+            color: var(--white);
+            font-weight: 400;
+            max-width: 500px;
+            line-height: 1.15;
+        }
+
+        .features-grid {
+            margin-top: 64px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .feature-card {
+            background: var(--surface);
+            padding: 40px 36px;
+            transition: background 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: var(--accent);
+            transform: scaleX(0);
+            transition: transform 0.3s;
+            transform-origin: left;
+        }
+
+        .feature-card:hover { background: #161820; }
+        .feature-card:hover::before { transform: scaleX(1); }
+
+        .feature-icon {
+            width: 44px; height: 44px;
+            background: var(--accent-dim);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin-bottom: 24px;
+        }
+
+        .feature-card h3 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 22px;
+            color: var(--white);
+            font-weight: 400;
+            margin-bottom: 12px;
+        }
+
+        .feature-card p {
+            font-size: 14px;
+            color: var(--muted);
+            line-height: 1.65;
+        }
+
+        /* Methodology */
+        .methodology {
+            position: relative;
+            z-index: 1;
+            padding: 100px 60px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .steps {
+            margin-top: 60px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .step {
+            display: grid;
+            grid-template-columns: 80px 1fr;
+            gap: 0 40px;
+            padding: 40px 0;
+            border-top: 1px solid var(--border);
+            align-items: start;
+        }
+
+        .step:last-child { border-bottom: 1px solid var(--border); }
+
+        .step-num {
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            color: var(--accent);
+            letter-spacing: 0.1em;
+            padding-top: 6px;
+        }
+
+        .step-content h3 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 26px;
+            color: var(--white);
+            font-weight: 400;
+            margin-bottom: 10px;
+        }
+
+        .step-content p {
+            font-size: 15px;
+            color: var(--muted);
+            line-height: 1.65;
+            max-width: 600px;
+        }
+
+        /* CTA section */
+        .cta-section {
+            position: relative;
+            z-index: 1;
+            padding: 80px 60px 120px;
+            text-align: center;
+        }
+
+        .cta-box {
+            max-width: 700px;
+            margin: 0 auto;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 72px 60px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-box::before {
+            content: '';
+            position: absolute;
+            top: -60px; left: 50%;
+            transform: translateX(-50%);
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, rgba(200,245,90,0.12) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .cta-box h2 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 42px;
+            color: var(--white);
+            font-weight: 400;
+            margin-bottom: 16px;
+        }
+
+        .cta-box p {
+            color: var(--muted);
+            font-size: 16px;
+            margin-bottom: 36px;
+            line-height: 1.6;
+        }
+
+        /* Footer */
+        footer {
+            position: relative;
+            z-index: 1;
+            border-top: 1px solid var(--border);
+            padding: 32px 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        footer p {
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        footer a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 13px;
+            transition: color 0.2s;
+        }
+        footer a:hover { color: var(--text); }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 768px) {
+            nav { padding: 16px 24px; }
+            .nav-links { display: none; }
+            .features, .methodology, .cta-section { padding: 60px 24px; }
+            .features-grid { grid-template-columns: 1fr; }
+            .cta-box { padding: 48px 32px; }
+            footer { flex-direction: column; gap: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="logo">DCF<span>/</span>VALUATION</div>
+    <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#methodology">Methodology</a>
+        <a href="/analyze">Analyze</a>
+    </div>
+    <a href="/analyze" class="btn-nav">Start Analysis →</a>
+</nav>
+
+<section class="hero">
+    <div class="badge">LIVE MARKET DATA · DCF MODEL</div>
+    <h1>Find the <em>intrinsic value</em> of any stock</h1>
+    <p class="subtitle">A professional-grade Discounted Cash Flow engine. Fetch real financials, model future cash flows, and cut through market noise.</p>
+    <div class="hero-cta">
+        <a href="/analyze" class="btn-primary">Analyze a Stock</a>
+        <a href="#methodology" class="btn-secondary">How it works</a>
+    </div>
+</section>
+
+<!-- Ticker tape -->
+<div class="ticker-wrap">
+    <div class="ticker-tape" id="tickerTape">
+        <span class="ticker-item"><span class="ticker-symbol">AAPL</span><span class="ticker-price">$189.30</span><span class="ticker-up">+1.2%</span></span>
+        <span class="ticker-item"><span class="ticker-symbol">MSFT</span><span class="ticker-price">$415.50</span><span class="ticker-up">+0.8%</span></span>
+        <span class="ticker-item"><span class="ticker-symbol">GOOGL</span><span class="ticker-price">$175.20</span><span class="ticker-down">−0.4%</span></span>
+        <span class="ticker-item"><span class="ticker-symbol">NVDA</span><span class="ticker-price">$875.80</span><span class="ticker-up">+2.1%</span></span>
+        <span class="ticker-item"><span class="ticker-symbol">AMZN</span><span class="ticker-price">$182.60</span><span class="ticker-up">+0.6%</span></span>
+        <span class="ticker-item"><span class="ticker-symbol">TSLA</span><span class="ticker-price">$248.50</span><span class="ticker-down">−1.3%</span></span>
+        <span class="ticker-item"><span class="ticker-symbol">TCS.NS</span><span class="ticker-price">₹3,812</span><span class="ticker-up">+0.9%</span></span>
+        <span class="ticker-item"><span class="ticker-symbol">RELIANCE.NS</span><span class="ticker-price">₹2,945</span><span class="ticker-down">−0.2%</span></span>
+        <span class="ticker-item"><span class="ticker-symbol">META</span><span class="ticker-price">$502.30</span><span class="ticker-up">+1.5%</span></span>
+        <span class="ticker-item"><span class="ticker-symbol">JPM</span><span class="ticker-price">$198.40</span><span class="ticker-up">+0.3%</span></span>
+        <!-- Duplicate for seamless loop -->
+        <span class="ticker-item"><span class="ticker-symbol">AAPL</span><span class="ticker-price">$189.30</span><span class="ticker-up">+1.2%</span></span>
+        <span class="ticker-item"><span class="ticker-symbol">MSFT</span><span class="ticker-price">$415.50</span><span class="ticker-up">+0.8%</span></span>
+        <span class="ticker-item"><span class="ticker-symbol">GOOGL</span><span class="ticker-price">$175.20</span><span class="ticker-down">−0.4%</span></span>
+        <span class="ticker-item"><span class="ticker-symbol">NVDA</span><span class="ticker-price">$875.80</span><span class="ticker-up">+2.1%</span></span>
+        <span class="ticker-item"><span class="ticker-symbol">AMZN</span><span class="ticker-price">$182.60</span><span class="ticker-up">+0.6%</span></span>
+        <span class="ticker-item"><span class="ticker-symbol">TSLA</span><span class="ticker-price">$248.50</span><span class="ticker-down">−1.3%</span></span>
+        <span class="ticker-item"><span class="ticker-symbol">TCS.NS</span><span class="ticker-price">₹3,812</span><span class="ticker-up">+0.9%</span></span>
+        <span class="ticker-item"><span class="ticker-symbol">RELIANCE.NS</span><span class="ticker-price">₹2,945</span><span class="ticker-down">−0.2%</span></span>
+        <span class="ticker-item"><span class="ticker-symbol">META</span><span class="ticker-price">$502.30</span><span class="ticker-up">+1.5%</span></span>
+        <span class="ticker-item"><span class="ticker-symbol">JPM</span><span class="ticker-price">$198.40</span><span class="ticker-up">+0.3%</span></span>
+    </div>
+</div>
+
+<!-- Features -->
+<section class="features" id="features">
+    <div class="section-label">// CAPABILITIES</div>
+    <h2 class="section-title">Everything you need to value a company</h2>
+    <div class="features-grid">
+        <div class="feature-card">
+            <div class="feature-icon">📡</div>
+            <h3>Live Financial Data</h3>
+            <p>Pulls real-time fundamentals, cash flow statements, and balance sheets directly from Yahoo Finance. US and Indian markets supported.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">⚡</div>
+            <h3>DCF Engine</h3>
+            <p>CAPM-based WACC calculation, multi-stage growth projections, Gordon Growth terminal value — the full professional DCF stack.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🔬</div>
+            <h3>Sensitivity Analysis</h3>
+            <p>Test how fair value shifts across a matrix of WACC and growth rate assumptions. See the range, not just a single number.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📊</div>
+            <h3>Visual Breakdowns</h3>
+            <p>Interactive charts showing FCF projections, value composition (PV of cash flows vs. terminal value), and historical context.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🎯</div>
+            <h3>Buy / Sell Signal</h3>
+            <p>Compares intrinsic value to current price and generates a clear recommendation: Strong Buy, Hold, Strong Sell, and everything between.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🌍</div>
+            <h3>Global Markets</h3>
+            <p>Works with NSE/BSE-listed Indian stocks (e.g. TCS.NS) as well as all major US-listed equities and ETFs.</p>
+        </div>
+    </div>
+</section>
+
+<!-- Methodology -->
+<section class="methodology" id="methodology">
+    <div class="section-label">// METHODOLOGY</div>
+    <h2 class="section-title">How the DCF model works</h2>
+    <div class="steps">
+        <div class="step">
+            <div class="step-num">01</div>
+            <div class="step-content">
+                <h3>Fetch Historical Free Cash Flow</h3>
+                <p>We pull operating cash flow and capital expenditures from audited filings to derive the most recent Free Cash Flow — the starting point for all projections.</p>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-num">02</div>
+            <div class="step-content">
+                <h3>Project Future Cash Flows</h3>
+                <p>Apply your custom growth rates year by year to extrapolate FCF over the projection horizon (1–10 years). Multi-stage growth is supported.</p>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-num">03</div>
+            <div class="step-content">
+                <h3>Calculate WACC via CAPM</h3>
+                <p>Cost of equity = Risk-Free Rate + β × Market Risk Premium. Blended with after-tax cost of debt, weighted by capital structure, to arrive at WACC.</p>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-num">04</div>
+            <div class="step-content">
+                <h3>Compute Terminal Value</h3>
+                <p>Using the Gordon Growth Model: TV = FCF<sub>n</sub> × (1 + g) / (WACC − g). This captures all value beyond the explicit forecast period.</p>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-num">05</div>
+            <div class="step-content">
+                <h3>Discount to Present & Derive Fair Value</h3>
+                <p>Sum of present values of projected FCFs plus the discounted terminal value equals Enterprise Value. Subtract net debt, divide by shares outstanding.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+    <div class="cta-box">
+        <h2>Run your first analysis</h2>
+        <p>Type a ticker, set your assumptions, and get a complete DCF valuation in seconds.</p>
+        <a href="/analyze" class="btn-primary">Open the Analyzer →</a>
+    </div>
+</section>
+
+<footer>
+    <p>DCF Valuation Tool — for educational purposes only. Not financial advice.</p>
+    <a href="/analyze">Launch App →</a>
+</footer>
+
+</body>
+</html>

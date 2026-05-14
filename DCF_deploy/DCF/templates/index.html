@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCF Analyzer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <a href="/" class="logo">DCF<span>/</span>VAL</a>
+        <button class="sidebar-close" id="sidebarClose">✕</button>
+    </div>
+
+    <form id="dcfForm" class="analysis-form">
+
+        <!-- Market Toggle -->
+        <div class="form-section">
+            <label class="form-label">Market</label>
+            <div class="toggle-group" id="marketToggle">
+                <button type="button" class="toggle-btn active" data-market="US">🇺🇸 US</button>
+                <button type="button" class="toggle-btn" data-market="IN">🇮🇳 India</button>
+            </div>
+        </div>
+
+        <!-- Ticker Input -->
+        <div class="form-section">
+            <label class="form-label" for="tickerInput">Ticker Symbol</label>
+            <div class="ticker-input-wrap">
+                <input type="text" id="tickerInput" class="form-input" placeholder="e.g. AAPL or TCS.NS" autocomplete="off">
+                <button type="button" class="ticker-search-btn" id="tickerSearchBtn">→</button>
+            </div>
+            <div class="stock-preview" id="stockPreview" style="display:none;">
+                <span class="preview-name" id="previewName">—</span>
+                <span class="preview-price" id="previewPrice">—</span>
+            </div>
+        </div>
+
+        <!-- Popular Stocks -->
+        <div class="form-section">
+            <label class="form-label">Quick Select</label>
+            <div class="popular-chips" id="popularChips">
+                <button type="button" class="chip" data-ticker="AAPL">AAPL</button>
+                <button type="button" class="chip" data-ticker="MSFT">MSFT</button>
+                <button type="button" class="chip" data-ticker="GOOGL">GOOGL</button>
+                <button type="button" class="chip" data-ticker="NVDA">NVDA</button>
+                <button type="button" class="chip" data-ticker="TSLA">TSLA</button>
+                <button type="button" class="chip" data-ticker="META">META</button>
+            </div>
+        </div>
+
+        <!-- Projection Years -->
+        <div class="form-section">
+            <label class="form-label">Projection Years: <span id="yearsDisplay" class="accent-val">5</span></label>
+            <input type="range" id="yearsInput" class="range-input" min="3" max="10" value="5">
+        </div>
+
+        <!-- Growth Rates -->
+        <div class="form-section">
+            <label class="form-label">Annual Growth Rates (%)</label>
+            <div id="growthRatesContainer" class="growth-rates-container">
+                <!-- Dynamically generated -->
+            </div>
+        </div>
+
+        <!-- Tax Rate -->
+        <div class="form-section">
+            <label class="form-label">Tax Rate: <span id="taxDisplay" class="accent-val">25%</span></label>
+            <input type="range" id="taxInput" class="range-input" min="0" max="40" value="25" step="1">
+        </div>
+
+        <!-- Analyze Button -->
+        <button type="submit" class="btn-analyze" id="analyzeBtn">
+            <span id="analyzeBtnText">Analyze Stock</span>
+            <div class="btn-spinner" id="btnSpinner" style="display:none;"></div>
+        </button>
+
+    </form>
+
+    <div class="sidebar-footer">
+        <a href="/" class="back-link">← Back to home</a>
+    </div>
+</aside>
+
+<!-- Main content -->
+<div class="main" id="main">
+
+    <!-- Top bar -->
+    <header class="topbar">
+        <button class="hamburger" id="hamburger">☰</button>
+        <div class="topbar-title" id="topbarTitle">DCF Analyzer</div>
+        <div class="topbar-hint">Enter a ticker in the panel →</div>
+    </header>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="emptyState">
+        <div class="empty-icon">◈</div>
+        <h2>Ready to analyze</h2>
+        <p>Enter a stock ticker in the left panel and configure your assumptions to generate a DCF valuation.</p>
+        <div class="sample-tickers">
+            <span>Try:</span>
+            <button class="sample-btn" onclick="quickAnalyze('AAPL')">AAPL</button>
+            <button class="sample-btn" onclick="quickAnalyze('MSFT')">MSFT</button>
+            <button class="sample-btn" onclick="quickAnalyze('TCS.NS')">TCS.NS</button>
+        </div>
+    </div>
+
+    <!-- Error state -->
+    <div class="error-state" id="errorState" style="display:none;">
+        <div class="error-icon">⚠</div>
+        <h2 id="errorTitle">Analysis failed</h2>
+        <p id="errorMessage">Something went wrong. Please try again.</p>
+    </div>
+
+    <!-- Loading state -->
+    <div class="loading-state" id="loadingState" style="display:none;">
+        <div class="loading-spinner"></div>
+        <p class="loading-text" id="loadingText">Fetching financial data...</p>
+    </div>
+
+    <!-- Results -->
+    <div class="results" id="results" style="display:none;">
+
+        <!-- Stock Header -->
+        <div class="results-header">
+            <div class="results-ticker-info">
+                <h1 class="results-ticker" id="resTicker">—</h1>
+                <p class="results-name" id="resName">—</p>
+                <span class="results-sector" id="resSector">—</span>
+            </div>
+            <div class="results-price-block">
+                <div class="current-price-label">Current Price</div>
+                <div class="current-price" id="resCurrentPrice">—</div>
+                <div class="fair-value-label">Fair Value (DCF)</div>
+                <div class="fair-value" id="resFairValue">—</div>
+            </div>
+        </div>
+
+        <!-- Recommendation Banner -->
+        <div class="recommendation-banner" id="recommendationBanner">
+            <div class="rec-main">
+                <span class="rec-label">Recommendation</span>
+                <span class="rec-value" id="recValue">—</span>
+            </div>
+            <div class="rec-upside">
+                <span class="rec-upside-label">Upside / Downside</span>
+                <span class="rec-upside-value" id="recUpside">—</span>
+            </div>
+        </div>
+
+        <!-- Key Metrics Grid -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">WACC</div>
+                <div class="metric-value" id="mWacc">—</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Enterprise Value</div>
+                <div class="metric-value" id="mEV">—</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Equity Value</div>
+                <div class="metric-value" id="mEquity">—</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Terminal Value (PV)</div>
+                <div class="metric-value" id="mTV">—</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">PV of FCFs</div>
+                <div class="metric-value" id="mPVFCF">—</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Market Cap</div>
+                <div class="metric-value" id="mMarketCap">—</div>
+            </div>
+        </div>
+
+        <!-- Charts row -->
+        <div class="charts-row">
+            <!-- FCF Projection Chart -->
+            <div class="chart-card" id="fcfChartCard">
+                <div class="chart-title">Projected Free Cash Flows</div>
+                <canvas id="fcfChart"></canvas>
+            </div>
+            <!-- Value Composition -->
+            <div class="chart-card" id="valueChartCard">
+                <div class="chart-title">Value Composition</div>
+                <canvas id="valueChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Projected FCF Table -->
+        <div class="table-card">
+            <div class="table-title">Year-by-Year Projection</div>
+            <div class="table-wrap">
+                <table class="data-table" id="projectionTable">
+                    <thead>
+                        <tr>
+                            <th>Year</th>
+                            <th>Growth Rate</th>
+                            <th>Free Cash Flow</th>
+                            <th>Discount Factor</th>
+                            <th>Present Value</th>
+                        </tr>
+                    </thead>
+                    <tbody id="projectionBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Stock Info Row -->
+        <div class="info-row">
+            <div class="info-card">
+                <div class="info-title">Company Fundamentals</div>
+                <div class="info-grid">
+                    <div class="info-item"><span class="info-key">Beta</span><span class="info-val" id="iBeta">—</span></div>
+                    <div class="info-item"><span class="info-key">P/E Ratio</span><span class="info-val" id="iPE">—</span></div>
+                    <div class="info-item"><span class="info-key">P/B Ratio</span><span class="info-val" id="iPB">—</span></div>
+                    <div class="info-item"><span class="info-key">Dividend Yield</span><span class="info-val" id="iDiv">—</span></div>
+                    <div class="info-item"><span class="info-key">ROE</span><span class="info-val" id="iROE">—</span></div>
+                    <div class="info-item"><span class="info-key">Profit Margin</span><span class="info-val" id="iMargin">—</span></div>
+                    <div class="info-item"><span class="info-key">D/E Ratio</span><span class="info-val" id="iDE">—</span></div>
+                    <div class="info-item"><span class="info-key">Shares Out.</span><span class="info-val" id="iShares">—</span></div>
+                </div>
+            </div>
+            <div class="info-card">
+                <div class="info-title">DCF Assumptions Used</div>
+                <div class="info-grid">
+                    <div class="info-item"><span class="info-key">Risk-Free Rate</span><span class="info-val">4.0%</span></div>
+                    <div class="info-item"><span class="info-key">Market Premium</span><span class="info-val">6.0%</span></div>
+                    <div class="info-item"><span class="info-key">Terminal Growth</span><span class="info-val">2.5%</span></div>
+                    <div class="info-item"><span class="info-key">Tax Rate</span><span class="info-val" id="aTax">—</span></div>
+                    <div class="info-item"><span class="info-key">Net Debt</span><span class="info-val" id="aNetDebt">—</span></div>
+                    <div class="info-item"><span class="info-key">FCF (Base)</span><span class="info-val" id="aFCF">—</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Disclaimer -->
+        <div class="disclaimer">
+            ⚠ This analysis is for educational purposes only and does not constitute financial advice. Always consult a qualified financial advisor before making investment decisions.
+        </div>
+
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
